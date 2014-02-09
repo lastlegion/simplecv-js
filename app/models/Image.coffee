@@ -37,7 +37,122 @@ module.exports = class Image extends Model
       @ctx.drawImage(data, 0, 0)
     else
       throw new Error 'Cannot create Image with data type "'+data.constructor.name+'".'
-  
+  convolve:(kernel,grayscale=false) =>   #Remove grayscale=true
+    n = kernel.length
+    border = n/2 - 0.5
+    console.log border
+    console.log "help me"
+    w = @width+(2*border)
+    h = @height+(2*border)
+    istart = border
+    istop = border+@width-1
+    jstart = border
+    jstop = border+@height-1
+
+    if( grayscale )
+      out = @cloneGrayWithBorder(border)
+      temp = @cloneGrayWithBorder(border)
+      console.log "gray yay"
+      #istart = istart + 1  
+      for j in [jstart..jstop] #Y
+        for i in [istart..istop] #X
+          vals=[]
+          
+          for l in [0..n-1]
+            for m in [0..n-1]
+              #console.log m
+              vals.push(temp[((j-border+l)*w)+((i+border-m))]*kernel[l][m])
+          '''
+          vals.push(temp[((j-1)*w)+((i+1))]*kernel[0][0])
+          vals.push(temp[((j-1)*w)+((i  ))]*kernel[0][1])
+          vals.push(temp[((j-1)*w)+((i-1))]*kernel[0][2])
+          vals.push(temp[((j)*w)+  ((i+1))]*kernel[1][0])
+          vals.push(temp[((j)*w)+  ((i  ))]*kernel[1][1])
+          vals.push(temp[((j)*w)+  ((i-1))]*kernel[1][2])
+          vals.push(temp[((j+1)*w)+((i+1))]*kernel[2][0])
+          vals.push(temp[((j+1)*w)+((i  ))]*kernel[2][1])
+          vals.push(temp[((j+1)*w)+((i-1))]*kernel[2][2])
+
+          '''
+          acc=0
+          for v in vals
+            acc+=v
+          out[(j*w)+(i)] = @clamp(Math.abs(acc))
+      return @cropBorderCopyGray(out,border)
+    else
+      out = @cloneWithBorder(border)
+      temp = @cloneWithBorder(border)
+      console.log temp
+      console.log "not gray"
+      bpp = 4
+      for j in [jstart..jstop] #Y
+        for i in [istart..istop] #X
+          vals = []
+          for l in [0..n-1]
+            for m in [0..n-1]
+              for offset in [0..2]
+                #console.log "test"
+                #console.log offset+(bpp*(j-border+l)*w)+(bpp*(i+border-m))
+                vals.push(temp[offset+(bpp*(j-border+l)*w)+(bpp*(i+border-m))]*kernel[l][m])
+          acc = 0
+          for v in vals
+            acc += v
+          out[offset+(bpp*j*w)+(bpp*i)] = @clamp(Math.abs(acc))
+      return @cropBorderCopy(out,border)
+
+
+    '''
+  convolve:(kernel) =>
+    kernel_size = kernel.length
+
+    img = this.grayscale()
+    console.log img.getMatrix()
+    #Change border size!
+    #output = img.addBorder(1).getMatrix(); r=[];g=[];b=[]
+    img = img.cloneGrayWithBorder(1)
+    output = img
+    console.log img
+    #return @cropBorderCopyGray(output,1)
+
+    #output= []
+    #output.data=[]
+    console.log(output)
+    f=0
+    for i in [1..@width]
+      for j in [1..@height]
+        p1= (img[(j-1)*@width+i - 1]*kernel[2][2])
+        p2= (img[(j-1)*@width+i]*kernel[1][2])
+        p3= (img[(j-1)*@width+i+1]*kernel[0][2])
+        p4= (img[j*@width+i-1]*kernel[2][1])
+        p5= (img[j*@width+i]*kernel[1][1])
+        p6= (img[j*@width+i+1]*kernel[0][1])
+        p7= (img[j*@width+i-1]*kernel[2][0])
+        p8= (img[j*@width+i]*kernel[1][0])
+        p9= (img[j*@width+i+1]*kernel[0][0])
+        output[j*@width+i] = @clamp(p1+p2+p3+p4+p5+p6+p7+p8+p9)
+    '''
+    '''    
+    for i in [1..@width]
+      for j in [1..@height]
+        sum1 = 0; sum2=0; sum3=0
+        for k in [1..kernel_size]
+            for l in [1..kernel_size]
+                sum1 += @clamp(img[f]*kernel[kernel_size-k][kernel_size-l])
+                sum2 += @clamp(img[f+1]*kernel[kernel_size-k][kernel_size-l])
+                sum3 += @clamp(img[f+2]*kernel[kernel_size-k][kernel_size-l])
+
+                #sum1 += @clamp(img.data[f]*kernel[kernel_size-k][kernel_size-l])
+                #sum2 += @clamp(img.data[f+1]*kernel[kernel_size-k][kernel_size-l])
+                #sum3 += @clamp(img.data[f+2]*kernel[kernel_size-k][kernel_size-l])
+            f++
+        output.data[f] = sum1
+        output.data[f+1] = sum2
+        output.data[f+2] = sum3
+        f+=4
+    '''
+    #return new Image(output)
+    #return @cropBorderCopyGray(output,1)
+
   # Appends the canvas to parent element.
   # Defaults to appending it to the body.
   # If has been called before, ensure that
